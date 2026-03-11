@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>말씀사탕</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: #f8f7f4;
+  font-family: 'Nanum Myeongjo', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ── 레이아웃 ── */
+.page {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ── 헤더 ── */
+header {
+  padding: 2.8rem 0 2rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid #111;
+  opacity: 0;
+  animation: up 0.7s 0s ease forwards;
+}
+
+.logo {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #111;
+}
+
+.logo-sub {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 300;
+  color: #999;
+  letter-spacing: 0.18em;
+}
+
+/* ── 말씀 영역 ── */
+.stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 0;
+  min-height: 260px;
+  opacity: 0;
+  animation: up 0.7s 0.12s ease forwards;
+}
+
+/* 초기 상태 */
+.hint {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 300;
+  color: #bbb;
+  letter-spacing: 0.2em;
+  transition: opacity 0.4s;
+}
+
+/* 말씀 */
+.verse-block { display: none; flex-direction: column; gap: 2rem; }
+
+.verse-number {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #bbb;
+  opacity: 0;
+  transition: opacity 0.4s 0.05s;
+}
+
+.verse-text {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 700;
+  line-height: 1.75;
+  color: #111;
+  word-break: keep-all;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.65s 0.1s ease, transform 0.65s 0.1s ease;
+}
+
+.verse-ref {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: #999;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transition: opacity 0.5s 0.45s ease;
+}
+
+.verse-block.on .verse-number { opacity: 1; }
+.verse-block.on .verse-text   { opacity: 1; transform: translateY(0); }
+.verse-block.on .verse-ref    { opacity: 1; }
+
+/* ── 하단 ── */
+footer {
+  border-top: 1px solid #111;
+  padding: 1.8rem 0 2.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  opacity: 0;
+  animation: up 0.7s 0.22s ease forwards;
+}
+
+/* 메인 버튼 */
+.btn-main {
+  width: 100%;
+  background: #111;
+  color: #f8f7f4;
+  border: none;
+  font-family: 'Nanum Myeongjo', serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  padding: 1.1rem 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.15s;
+}
+
+.btn-main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.btn-main:hover::after { opacity: 0.07; }
+.btn-main:active { opacity: 0.8; }
+.btn-main span { position: relative; z-index: 1; }
+
+/* 보조 버튼 행 */
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s 0.2s;
+}
+
+.btn-row.on { opacity: 1; pointer-events: auto; }
+
+.btn-sec {
+  background: transparent;
+  border: 1px solid #ccc;
+  color: #555;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.btn-sec:hover {
+  border-color: #111;
+  color: #111;
+  background: #f0efe9;
+}
+
+/* 카운터 */
+.counter {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 300;
+  color: #ccc;
+  letter-spacing: 0.15em;
+  text-align: right;
+  min-height: 1em;
+}
+
+/* 토스트 */
+.toast {
+  position: fixed;
+  bottom: 2.4rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: #111;
+  color: #f8f7f4;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  padding: 0.55rem 1.4rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 99;
+}
+.toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@keyframes up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="page">
+
+  <header>
+    <span class="logo">말씀사탕</span>
+    <span class="logo-sub">한국 천주교 주교회의 공인 성경</span>
+  </header>
+
+  <div class="stage">
+    <div class="hint" id="hint">— 버튼을 눌러 오늘의 말씀을 받으세요 —</div>
+    <div class="verse-block" id="vb">
+      <div class="verse-number" id="vn">말씀</div>
+      <div class="verse-text"  id="vt"></div>
+      <div class="verse-ref"   id="vr"></div>
+    </div>
+  </div>
+
+  <footer>
+    <button class="btn-main" onclick="openCandy()">
+      <span id="btnLabel">말씀 받기</span>
+    </button>
+    <div class="btn-row" id="btnRow">
+      <button class="btn-sec" onclick="copyVerse()">말씀 복사</button>
+      <button class="btn-sec" onclick="saveImage()">이미지 저장</button>
+    </div>
+    <div class="counter" id="counter"></div>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── 말씀 데이터 (한국 천주교 주교회의 공인 성경 2005) ── */
+const verses = [
+  { text: "주님은 나의 목자, 나는 아쉬울 것 없어라.", ref: "시편 23,1" },
+  { text: "주님은 나의 빛, 나의 구원, 나 누구를 두려워하랴? 주님은 내 생명의 요새, 나 누구 앞에 떨랴?", ref: "시편 27,1" },
+  { text: "주님의 말씀은 내 발의 등불, 내 길의 빛입니다.", ref: "시편 119,105" },
+  { text: "주님께 희망을 두어라. 굳세어라, 마음을 다잡아라. 주님께 희망을 두어라.", ref: "시편 27,14" },
+  { text: "두려워하지 마라, 내가 너와 함께 있다. 떨지 마라, 내가 너의 하느님이다. 내가 너를 굳세게 하리라, 내가 너를 도와주리라.", ref: "이사 41,10" },
+  { text: "이는 내가 너를 위하여 세우는 계획을 내가 알고 있기 때문이다. 재난이 아니라 복을 주려는 계획이다.", ref: "예레 29,11" },
+  { text: "새 마음을 너희에게 주고 새 영을 너희 안에 넣어 주겠다.", ref: "에제 36,26" },
+  { text: "독수리처럼 날개 치며 올라가리라. 달려도 지치지 않고 걸어도 피곤하지 않으리라.", ref: "이사 40,31" },
+  { text: "마음이 가난한 사람은 행복하다. 하늘 나라가 그들의 것이다.", ref: "마태 5,3" },
+  { text: "온유한 사람은 행복하다. 그들은 땅을 차지할 것이다.", ref: "마태 5,5" },
+  { text: "평화를 이루는 사람은 행복하다. 그들은 하느님의 자녀라 불릴 것이다.", ref: "마태 5,9" },
+  { text: "이처럼 너희의 빛이 사람들 앞을 비추어, 그들이 너희의 착한 행실을 보고 하늘에 계신 너희 아버지를 찬양하게 하여라.", ref: "마태 5,16" },
+  { text: "청하여라, 너희에게 주실 것이다. 찾아라, 너희가 얻을 것이다. 문을 두드려라, 너희에게 열릴 것이다.", ref: "마태 7,7" },
+  { text: "너희는 먼저 하느님의 나라와 그분의 의로움을 찾아라. 그러면 이 모든 것도 곁들여 받게 될 것이다.", ref: "마태 6,33" },
+  { text: "하느님께서는 세상을 너무나 사랑하신 나머지 외아들을 내주시어, 그를 믿는 사람은 누구나 멸망하지 않고 영원한 생명을 얻게 하셨다.", ref: "요한 3,16" },
+  { text: "나는 길이요 진리요 생명이다. 나를 통하지 않고서는 아무도 아버지께 갈 수 없다.", ref: "요한 14,6" },
+  { text: "내가 너희에게 평화를 두고 간다. 내 평화를 너희에게 준다.", ref: "요한 14,27" },
+  { text: "내 안에 머물러라, 나도 너희 안에 머무르겠다.", ref: "요한 15,4" },
+  { text: "서로 사랑하여라. 내가 너희를 사랑한 것처럼 너희도 서로 사랑하여라.", ref: "요한 15,12" },
+  { text: "용기를 내어라. 내가 세상을 이겼다.", ref: "요한 16,33" },
+  { text: "하느님께서는 당신을 사랑하는 이들을 위하여 모든 것이 함께 작용하여 선을 이루도록 해 주십니다.", ref: "로마 8,28" },
+  { text: "어떠한 피조물도 우리 주 그리스도 예수님 안에 있는 하느님의 사랑에서 우리를 떼어 놓을 수 없습니다.", ref: "로마 8,39" },
+  { text: "항상 기뻐하십시오. 끊임없이 기도하십시오. 모든 일에 감사하십시오.", ref: "1테살 5,16-18" },
+  { text: "주님 안에서 언제나 기뻐하십시오. 거듭 말합니다. 기뻐하십시오.", ref: "필리 4,4" },
+  { text: "아무것도 걱정하지 마십시오. 어떤 경우에도 기도와 간구로 감사를 드리며 여러분의 소원을 하느님께 아뢰십시오.", ref: "필리 4,6" },
+  { text: "나에게 힘을 주시는 분 안에서 나는 모든 것을 할 수 있습니다.", ref: "필리 4,13" },
+  { text: "하느님은 사랑이십니다. 사랑 안에 머무는 사람은 하느님 안에 머무르고, 하느님께서도 그 사람 안에 머무르십니다.", ref: "1요한 4,16" },
+  { text: "믿음은 바라는 것들의 실체이고, 보이지 않는 것들의 확증입니다.", ref: "히브 11,1" },
+  { text: "'네 마음을 다하고 네 목숨을 다하고 네 정신을 다하여 주 너의 하느님을 사랑해야 한다.' 이것이 가장 크고 첫째가는 계명이다.", ref: "마태 22,37-38" },
+  { text: "여러분 안에서 선한 일을 시작하신 분께서 그리스도 예수님의 날까지 그 일을 완성하실 것입니다.", ref: "필리 1,6" },
+];
+
+/* ── 파티클 ── */
+const cv = document.getElementById('canvas');
+const cx = cv.getContext('2d');
+let pts = [];
+
+function resize() { cv.width = innerWidth; cv.height = innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+class Pt {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    const a = Math.random() * Math.PI * 2, s = 4 + Math.random() * 9;
+    this.vx = Math.cos(a) * s;
+    this.vy = Math.sin(a) * s - 4;
+    this.life = 1;
+    this.decay = 0.014 + Math.random() * 0.018;
+    this.r = 1.2 + Math.random() * 2.8;
+    this.cross = Math.random() < 0.28;
+  }
+  step() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy += 0.2; this.vx *= 0.975;
+    this.life -= this.decay;
+  }
+  draw() {
+    cx.save();
+    cx.globalAlpha = Math.max(0, this.life);
+    cx.strokeStyle = cx.fillStyle = '#111';
+    cx.lineWidth = 1.1;
+    if (this.cross) {
+      const s = this.r * 2.2;
+      cx.beginPath();
+      cx.moveTo(this.x-s, this.y); cx.lineTo(this.x+s, this.y);
+      cx.moveTo(this.x, this.y-s); cx.lineTo(this.x, this.y+s*.65);
+      cx.stroke();
+    } else {
+      cx.beginPath();
+      cx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      cx.fill();
+    }
+    cx.restore();
+  }
+}
+
+function burst(x, y) { for (let i=0;i<80;i++) pts.push(new Pt(x,y)); }
+
+(function loop() {
+  cx.clearRect(0,0,cv.width,cv.height);
+  pts = pts.filter(p => p.life > 0);
+  pts.forEach(p => { p.step(); p.draw(); });
+  requestAnimationFrame(loop);
+})();
+
+/* ── 상태 ── */
+let count = 0, cur = null;
+
+function openCandy() {
+  /* 버스트 */
+  const b = document.getElementById('btnLabel').closest('button');
+  const rc = b.getBoundingClientRect();
+  burst(rc.left + rc.width/2, rc.top + rc.height/2);
+
+  /* 말씀 선택 */
+  let idx;
+  do { idx = Math.floor(Math.random() * verses.length); }
+  while (verses[idx] === cur && verses.length > 1);
+  cur = verses[idx];
+
+  /* hint 숨김 */
+  const hint = document.getElementById('hint');
+  hint.style.opacity = '0';
+  setTimeout(() => hint.style.display = 'none', 350);
+
+  /* 말씀 표시 */
+  const vb = document.getElementById('vb');
+  const vt = document.getElementById('vt');
+  const vr = document.getElementById('vr');
+
+  vb.style.display = 'flex';
+  vb.classList.remove('on');
+  vt.textContent = cur.text;
+  vr.textContent = cur.ref;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => vb.classList.add('on')));
+
+  /* UI 업데이트 */
+  document.getElementById('btnLabel').textContent = '다른 말씀 받기';
+  document.getElementById('btnRow').classList.add('on');
+  count++;
+  document.getElementById('counter').textContent = `오늘 ${count}번째 말씀`;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2000);
+}
+
+function copyVerse() {
+  if (!cur) return;
+  navigator.clipboard.writeText(`"${cur.text}"\n— ${cur.ref}\n\n† 말씀사탕`).then(() => toast('복사되었습니다'));
+}
+
+function saveImage() {
+  if (!cur) return;
+  const c = document.createElement('canvas');
+  c.width = 1080; c.height = 1080;
+  const x = c.getContext('2d');
+
+  /* 배경 */
+  x.fillStyle = '#f8f7f4'; x.fillRect(0,0,1080,1080);
+
+  /* 테두리 선 */
+  x.strokeStyle = '#111'; x.lineWidth = 1.5;
+  x.strokeRect(60,60,960,960);
+
+  /* 헤더 선 */
+  x.beginPath(); x.moveTo(60,160); x.lineTo(1020,160); x.stroke();
+
+  /* 로고 */
+  x.fillStyle = '#111';
+  x.font = 'bold 32px "Nanum Myeongjo", serif';
+  x.textAlign = 'left';
+  x.fillText('말씀사탕', 90, 128);
+
+  /* 날짜 */
+  x.fillStyle = '#aaa';
+  x.font = '300 22px "Noto Sans KR", sans-serif';
+  x.textAlign = 'right';
+  const d = new Date();
+  x.fillText(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`, 990, 128);
+
+  /* 말씀 */
+  x.fillStyle = '#111';
+  x.font = 'bold 46px "Nanum Myeongjo", serif';
+  x.textAlign = 'left';
+  wrapLeft(x, cur.text, 90, 340, 900, 76);
+
+  /* 출처 */
+  x.fillStyle = '#999';
+  x.font = '300 26px "Noto Sans KR", sans-serif';
+  x.textAlign = 'left';
+  /* 출처 y 위치: 하단 선 위 */
+  x.fillText('— ' + cur.ref, 90, 940);
+
+  /* 하단 선 */
+  x.strokeStyle = '#111';
+  x.beginPath(); x.moveTo(60,968); x.lineTo(1020,968); x.stroke();
+
+  c.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = '말씀사탕.png'; a.click();
+    URL.revokeObjectURL(url);
+    toast('저장되었습니다');
+  });
+}
+
+function wrapLeft(ctx, text, x, startY, maxW, lineH) {
+  const chars = [...text]; let line = '', lines = [];
+  for (const ch of chars) {
+    const t = line + ch;
+    if (ctx.measureText(t).width > maxW) { lines.push(line); line = ch; }
+    else line = t;
+  }
+  lines.push(line);
+  /* 세로 중앙 정렬 (160~968 사이) */
+  const zone = 968 - 160 - 80;
+  const total = lines.length * lineH;
+  const top = 160 + 80 + (zone - total) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, top + i * lineH));
+}
+</script>
+</body>
+</html>
