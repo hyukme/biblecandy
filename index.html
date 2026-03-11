@@ -407,53 +407,53 @@ function copyVerse() {
   navigator.clipboard.writeText(`"${cur.text}"\n— ${cur.ref}\n\n† 말씀사탕`).then(() => toast('복사되었습니다'));
 }
 
-function saveImage() {
-  if (!cur) return;
+function makeCanvas() {
   const c = document.createElement('canvas');
   c.width = 1080; c.height = 1080;
   const x = c.getContext('2d');
-
-  /* 배경 */
   x.fillStyle = '#f8f7f4'; x.fillRect(0,0,1080,1080);
-
-  /* 테두리 선 */
   x.strokeStyle = '#111'; x.lineWidth = 1.5;
   x.strokeRect(60,60,960,960);
-
-  /* 헤더 선 */
   x.beginPath(); x.moveTo(60,160); x.lineTo(1020,160); x.stroke();
-
-  /* 로고 */
   x.fillStyle = '#111';
-  x.font = 'bold 32px "Nanum Myeongjo", serif';
+  x.font = 'bold 32px serif';
   x.textAlign = 'left';
   x.fillText('말씀사탕', 90, 128);
-
-  /* 날짜 */
   x.fillStyle = '#aaa';
-  x.font = '300 22px "Noto Sans KR", sans-serif';
+  x.font = '300 22px sans-serif';
   x.textAlign = 'right';
   const d = new Date();
   x.fillText(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`, 990, 128);
-
-  /* 말씀 */
   x.fillStyle = '#111';
-  x.font = 'bold 46px "Nanum Myeongjo", serif';
+  x.font = 'bold 46px serif';
   x.textAlign = 'left';
   wrapLeft(x, cur.text, 90, 340, 900, 76);
-
-  /* 출처 */
   x.fillStyle = '#999';
-  x.font = '300 26px "Noto Sans KR", sans-serif';
+  x.font = '22px sans-serif';
   x.textAlign = 'left';
-  /* 출처 y 위치: 하단 선 위 */
   x.fillText('— ' + cur.ref, 90, 940);
-
-  /* 하단 선 */
   x.strokeStyle = '#111';
   x.beginPath(); x.moveTo(60,968); x.lineTo(1020,968); x.stroke();
+  return c;
+}
 
-  c.toBlob(blob => {
+async function saveImage() {
+  if (!cur) return;
+  const c = makeCanvas();
+  c.toBlob(async blob => {
+    // 모바일: 공유 시트 → "사진에 저장" 선택 가능
+    if (navigator.canShare) {
+      const file = new File([blob], '말씀사탕.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: '말씀사탕' });
+          return;
+        } catch(e) {
+          if (e.name === 'AbortError') return;
+        }
+      }
+    }
+    // PC 폴백: 일반 다운로드
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = '말씀사탕.png'; a.click();
