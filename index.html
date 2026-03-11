@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>말씀사탕</title>
+<title>장경임 안젤라의 말씀사탕</title>
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -241,7 +241,7 @@ footer {
 <div class="page">
 
   <header>
-    <span class="logo">말씀사탕</span>
+    <span class="logo">장경임 안젤라의 말씀사탕</span>
     <span class="logo-sub">한국 천주교 주교회의 공인 성경</span>
   </header>
 
@@ -256,7 +256,7 @@ footer {
 
   <footer>
     <button class="btn-main" onclick="openCandy()">
-      <span id="btnLabel">말씀 받기</span>
+      <span id="btnLabel">말씀사탕 받기</span>
     </button>
     <div class="btn-row" id="btnRow">
       <button class="btn-sec" onclick="copyVerse()">말씀 복사</button>
@@ -390,7 +390,7 @@ function openCandy() {
   requestAnimationFrame(() => requestAnimationFrame(() => vb.classList.add('on')));
 
   /* UI 업데이트 */
-  document.getElementById('btnLabel').textContent = '다른 말씀 받기';
+  document.getElementById('btnLabel').textContent = '다른 말씀사탕 받기';
   document.getElementById('btnRow').classList.add('on');
   count++;
   document.getElementById('counter').textContent = `오늘 ${count}번째 말씀`;
@@ -440,8 +440,26 @@ function makeCanvas() {
 async function saveImage() {
   if (!cur) return;
   const c = makeCanvas();
+  const dataUrl = c.toDataURL('image/png');
+
+  // 아이폰 Safari: 새 탭에 이미지 열기 → 꾹 누르면 "사진에 추가" 뜸
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  if (isIOS && isSafari) {
+    const win = window.open();
+    win.document.write(`
+      <html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh">
+      <img src="${dataUrl}" style="max-width:100%;max-height:100vh">
+      <p style="position:fixed;bottom:20px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-family:sans-serif">
+        이미지를 꾹 누르면 사진에 저장할 수 있어요</p>
+      </body></html>
+    `);
+    return;
+  }
+
+  // 안드로이드 / 그 외 모바일: Web Share API
   c.toBlob(async blob => {
-    // 모바일: 공유 시트 → "사진에 저장" 선택 가능
     if (navigator.canShare) {
       const file = new File([blob], '말씀사탕.png', { type: 'image/png' });
       if (navigator.canShare({ files: [file] })) {
