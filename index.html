@@ -85,6 +85,7 @@ header {
   color: #bbb;
   letter-spacing: 0.2em;
   transition: opacity 0.4s;
+  text-align: center;
 }
 
 /* 말씀 */
@@ -169,7 +170,7 @@ footer {
 /* 보조 버튼 행 */
 .btn-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.6rem;
   opacity: 0;
   pointer-events: none;
@@ -197,15 +198,55 @@ footer {
   background: #f0efe9;
 }
 
-/* 카운터 */
+/* ── 오늘의 말씀 (헤더 바로 아래 고정) ── */
+.today-banner {
+  border-bottom: 1px solid #e8e6e0;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.today-label {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #bbb;
+}
+.today-text {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+.today-ref {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 300;
+  color: #999;
+}
+
+/* 방문자 카운터 */
+.visitor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .counter {
   font-family: 'Noto Sans KR', sans-serif;
   font-size: 0.62rem;
   font-weight: 300;
   color: #ccc;
   letter-spacing: 0.15em;
-  text-align: right;
   min-height: 1em;
+}
+.visitor {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 300;
+  color: #ccc;
+  letter-spacing: 0.1em;
 }
 
 /* 토스트 */
@@ -242,11 +283,10 @@ footer {
 
   <header>
     <span class="logo">장경임 안젤라의 말씀사탕</span>
-  
   </header>
 
   <div class="stage">
-    <div class="hint" id="hint">— 버튼을 눌러 오늘의 말씀을 받으세요 —</div>
+    <div class="hint" id="hint">— 버튼을 눌러 말씀사탕을 받으세요 —</div>
     <div class="verse-block" id="vb">
       <div class="verse-number" id="vn">말씀</div>
       <div class="verse-text"  id="vt"></div>
@@ -261,8 +301,12 @@ footer {
     <div class="btn-row" id="btnRow">
       <button class="btn-sec" onclick="copyVerse()">말씀 복사</button>
       <button class="btn-sec" onclick="saveImage()">이미지 저장</button>
+      <button class="btn-sec" onclick="shareKakao()">카카오톡 공유</button>
     </div>
-    <div class="counter" id="counter"></div>
+    <div class="visitor-row">
+      <div class="counter" id="counter"></div>
+      <div class="visitor" id="visitor"></div>
+    </div>
   </footer>
 
 </div>
@@ -360,6 +404,19 @@ function burst(x, y) { for (let i=0;i<80;i++) pts.push(new Pt(x,y)); }
 /* ── 상태 ── */
 let count = 0, cur = null;
 
+/* ── 방문자 카운터 (countapi) ── */
+async function initVisitor() {
+  try {
+    const res = await fetch('https://api.countapi.xyz/hit/biblecandy.angela/visits');
+    const data = await res.json();
+    if (data.value) {
+      document.getElementById('visitor').textContent =
+        `🕊 ${data.value.toLocaleString()}명이 말씀을 받았어요`;
+    }
+  } catch(e) { /* 조용히 실패 */ }
+}
+initVisitor();
+
 function openCandy() {
   /* 버스트 */
   const b = document.getElementById('btnLabel').closest('button');
@@ -400,6 +457,25 @@ function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('on');
   setTimeout(() => t.classList.remove('on'), 2000);
+}
+
+function shareKakao() {
+  if (!cur) return;
+  const url = encodeURIComponent(location.href);
+  const text = encodeURIComponent(`🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n말씀사탕 받으러 가기 👉`);
+  // 카톡 공유: 링크+텍스트 같이 Web Share로 전송
+  if (navigator.share) {
+    navigator.share({
+      title: '장경임 안젤라의 말씀사탕',
+      text: `🍬 오늘의 말씀\n\n"${cur.text}"\n— ${cur.ref}`,
+      url: location.href,
+    }).catch(() => {});
+  } else {
+    // PC: 클립보드에 복사
+    navigator.clipboard.writeText(
+      `🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n${location.href}`
+    ).then(() => toast('링크와 말씀이 복사되었습니다'));
+  }
 }
 
 function copyVerse() {
