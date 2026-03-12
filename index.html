@@ -170,7 +170,7 @@ footer {
 /* 보조 버튼 행 */
 .btn-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
   opacity: 0;
   pointer-events: none;
@@ -300,7 +300,6 @@ footer {
     </button>
     <div class="btn-row" id="btnRow">
       <button class="btn-sec" onclick="copyVerse()">말씀 복사</button>
-      <button class="btn-sec" onclick="saveImage()">이미지 저장</button>
       <button class="btn-sec" onclick="shareKakao()">카카오톡 공유</button>
     </div>
     <div class="visitor-row">
@@ -461,13 +460,26 @@ function toast(msg) {
 
 function shareKakao() {
   if (!cur) return;
-  const msg = `🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n${location.href}`;
-  navigator.clipboard.writeText(msg)
+  const msg = `🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}`;
+  const url = location.href;
+
+  if (navigator.share) {
+    navigator.share({ title: '장경임 안젤라의 말씀사탕', text: msg, url })
+      .catch(e => {
+        if (e.name !== 'AbortError') fallbackCopy(msg, url);
+      });
+  } else {
+    fallbackCopy(msg, url);
+  }
+}
+
+function fallbackCopy(msg, url) {
+  const full = msg + '\n\n' + url;
+  navigator.clipboard.writeText(full)
     .then(() => toast('복사되었습니다! 카톡에 붙여넣기 하세요'))
     .catch(() => {
-      // 클립보드 실패 시 텍스트 선택 방식으로 폴백
       const el = document.createElement('textarea');
-      el.value = msg;
+      el.value = full;
       document.body.appendChild(el);
       el.select();
       document.execCommand('copy');
@@ -482,32 +494,64 @@ function copyVerse() {
 }
 
 function makeCanvas() {
+  // 먼저 텍스트 줄 수 계산
+  const tmpC = document.createElement('canvas');
+  const tmpX = tmpC.getContext('2d');
+  tmpX.font = 'bold 46px serif';
+  const chars = [...cur.text]; let line = '', lines = [];
+  for (const ch of chars) {
+    const t = line + ch;
+    if (tmpX.measureText(t).width > 900) { lines.push(line); line = ch; }
+    else line = t;
+  }
+  lines.push(line);
+
+  // 높이 계산: 헤더(160) + 여백(60) + 말씀줄(lines*76) + 여백(60) + 출처(40) + 하단선+여백(60)
+  const textH = lines.length * 76;
+  const height = 160 + 60 + textH + 60 + 40 + 60;
+
   const c = document.createElement('canvas');
-  c.width = 1080; c.height = 1080;
+  c.width = 1080; c.height = height;
   const x = c.getContext('2d');
-  x.fillStyle = '#f8f7f4'; x.fillRect(0,0,1080,1080);
+
+  x.fillStyle = '#f8f7f4'; x.fillRect(0, 0, 1080, height);
   x.strokeStyle = '#111'; x.lineWidth = 1.5;
-  x.strokeRect(60,60,960,960);
-  x.beginPath(); x.moveTo(60,160); x.lineTo(1020,160); x.stroke();
+  x.strokeRect(60, 60, 960, height - 120);
+
+  // 헤더 선
+  x.beginPath(); x.moveTo(60, 160); x.lineTo(1020, 160); x.stroke();
+
+  // 로고
   x.fillStyle = '#111';
   x.font = 'bold 32px serif';
   x.textAlign = 'left';
   x.fillText('말씀사탕', 90, 128);
+
+  // 날짜
   x.fillStyle = '#aaa';
-  x.font = '300 22px sans-serif';
+  x.font = '22px sans-serif';
   x.textAlign = 'right';
   const d = new Date();
   x.fillText(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`, 990, 128);
+
+  // 말씀
   x.fillStyle = '#111';
   x.font = 'bold 46px serif';
   x.textAlign = 'left';
-  wrapLeft(x, cur.text, 90, 340, 900, 76);
+  const startY = 160 + 60 + 46;
+  lines.forEach((l, i) => x.fillText(l, 90, startY + i * 76));
+
+  // 출처
+  const refY = 160 + 60 + textH + 60;
   x.fillStyle = '#999';
   x.font = '22px sans-serif';
   x.textAlign = 'left';
-  x.fillText('— ' + cur.ref, 90, 900);
+  x.fillText('— ' + cur.ref, 90, refY);
+
+  // 하단 선
   x.strokeStyle = '#111';
-  x.beginPath(); x.moveTo(60,930); x.lineTo(1020,930); x.stroke();
+  x.beginPath(); x.moveTo(60, refY + 26); x.lineTo(1020, refY + 26); x.stroke();
+
   return c;
 }
 
