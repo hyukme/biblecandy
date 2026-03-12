@@ -461,21 +461,19 @@ function toast(msg) {
 
 function shareKakao() {
   if (!cur) return;
-  const url = encodeURIComponent(location.href);
-  const text = encodeURIComponent(`🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n말씀사탕 받으러 가기 👉`);
-  // 카톡 공유: 링크+텍스트 같이 Web Share로 전송
-  if (navigator.share) {
-    navigator.share({
-      title: '장경임 안젤라의 말씀사탕',
-      text: `🍬 오늘의 말씀\n\n"${cur.text}"\n— ${cur.ref}`,
-      url: location.href,
-    }).catch(() => {});
-  } else {
-    // PC: 클립보드에 복사
-    navigator.clipboard.writeText(
-      `🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n${location.href}`
-    ).then(() => toast('링크와 말씀이 복사되었습니다'));
-  }
+  const msg = `🍬 장경임 안젤라의 말씀사탕\n\n"${cur.text}"\n— ${cur.ref}\n\n${location.href}`;
+  navigator.clipboard.writeText(msg)
+    .then(() => toast('복사되었습니다! 카톡에 붙여넣기 하세요'))
+    .catch(() => {
+      // 클립보드 실패 시 텍스트 선택 방식으로 폴백
+      const el = document.createElement('textarea');
+      el.value = msg;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast('복사되었습니다! 카톡에 붙여넣기 하세요');
+    });
 }
 
 function copyVerse() {
@@ -507,9 +505,9 @@ function makeCanvas() {
   x.fillStyle = '#999';
   x.font = '22px sans-serif';
   x.textAlign = 'left';
-  x.fillText('— ' + cur.ref, 90, 940);
+  x.fillText('— ' + cur.ref, 90, 900);
   x.strokeStyle = '#111';
-  x.beginPath(); x.moveTo(60,968); x.lineTo(1020,968); x.stroke();
+  x.beginPath(); x.moveTo(60,930); x.lineTo(1020,930); x.stroke();
   return c;
 }
 
@@ -564,10 +562,10 @@ function wrapLeft(ctx, text, x, startY, maxW, lineH) {
     else line = t;
   }
   lines.push(line);
-  /* 세로 중앙 정렬 (160~968 사이) */
-  const zone = 968 - 160 - 80;
+  /* 세로 중앙 정렬 (160~900 사이) */
+  const zone = 900 - 160 - 60;
   const total = lines.length * lineH;
-  const top = 160 + 80 + (zone - total) / 2;
+  const top = 160 + 60 + (zone - total) / 2;
   lines.forEach((l, i) => ctx.fillText(l, x, top + i * lineH));
 }
 </script>
